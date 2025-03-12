@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Razorpay Payment</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        *{
+            box-sizing:border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;            
+            background-color: #f4f4f4;
+        }
+        
+        nav{
+            display:flex;
+            width: 320px;           
+            margin: auto;    
+            margin-top: 20px;        
+            border-radius: 10px;
+            background-color: white;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);                       
+        }
+               
+        nav li{
+            width: 100%;
+            padding: 6px 12px;
+            list-style: none;           
+        }
+        
+        nav li a{
+            text-decoration: none;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);           
+            max-width: 320px;            
+            margin: 20px auto;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background: #3399cc;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 5px;
+            width: 100%;
+        }
+        button:hover {
+            background: #2879a8;
+        }
+    </style>
+</head>
+<body>
+    
+    <nav>
+        <li><a href="/t&c">Terms & Conditions</a></li>
+    </nav>
+
+    <div class="container">
+        <h2>Make a Payment</h2>
+        <input type="number" id="amount" placeholder="Enter amount (₹)" min="1">
+        <button onclick="makePayment()">Pay Now</button>
+    </div>
+
+    <script>
+        async function makePayment() {
+            const amount = document.getElementById("amount").value;
+            if (!amount || amount < 1) {
+                alert("Please enter a valid amount.");
+                return;
+            }
+
+            try {
+                // Create order by calling your backend
+                const response = await fetch("http://localhost:5000/payment", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ amount: amount, currency: "INR" }),
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    alert("Order creation failed.");
+                    return;
+                }
+
+                // Open Razorpay checkout
+                const options = {
+                    key: "YOUR_RAZORPAY_KEY_ID", // Replace with your Razorpay Key ID
+                    amount: data.amount,
+                    currency: "INR",
+                    order_id: data.orderId,
+                    name: "Your Business",
+                    description: "Payment for your order",
+                    handler: async function (response) {
+                        verifyPayment(response);
+                    },
+                    prefill: { name: "User", email: "user@example.com", contact: "9999999999" },
+                    theme: { color: "#3399cc" }
+                };
+
+                const rzp = new Razorpay(options);
+                rzp.open();
+            } catch (error) {
+                console.error("Payment error:", error);
+                alert("Payment failed.");
+            }
+        }
+
+        async function verifyPayment(paymentDetails) {
+            try {
+                const response = await fetch("http://localhost:5000/verify-payment", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(paymentDetails),
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert("Payment successful! Transaction ID: " + data.transactionId);
+                } else {
+                    alert("Payment verification failed.");
+                }
+            } catch (error) {
+                console.error("Verification error:", error);
+                alert("Payment verification failed.");
+            }
+        }
+    </script>
+
+</body>
+</html>
